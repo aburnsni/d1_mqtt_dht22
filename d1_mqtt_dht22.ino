@@ -9,6 +9,10 @@
 #include "DHTesp.h"
 DHTesp dht;
 
+// Variables
+unsigned long previousMillis = 0;
+const long interval = 5000;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -38,9 +42,15 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  delay(dht.getMinimumSamplingPeriod());
-  Serial.print(dht.getStatusString());
-  Serial.print("\t\t");
-  Serial.println(dht.getTemperature(), 2);
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    // put your main code here, to run repeatedly:
+    //delay(dht.getMinimumSamplingPeriod());
+    Serial.print(dht.getStatusString());
+    Serial.print("\t\t");
+    Serial.println(dht.getTemperature(), 2);
+  }
 }
