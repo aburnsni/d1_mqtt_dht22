@@ -21,7 +21,7 @@ const int mqtt_port = 17822;
 const char* mqtt_user = "hhwlirgn";
 const char* mqtt_pass = "FXwQWwN1fZhw";
 
-char* temp2;
+char temp2[5];
 
 //  Initialise pubsubslient
 WiFiClient espClient;
@@ -112,11 +112,14 @@ void loop() {
     // put your main code here, to run repeatedly:
     //delay(dht.getMinimumSamplingPeriod());
     float temperature = dht.getTemperature();
+    temperature = ((int)(temperature * 100))/100.0;
     Serial.print(dht.getStatusString());
     Serial.print("\t");
-    Serial.println(temperature, 2);
+    Serial.println(temperature);  
 
-    dtostrf(temperature, sizeof(temperature), 1, temp2);
-    client.publish("work_temp", temp2);
+       dtostrf(temperature, 0, 1, temp2);
+String payload = temp2;
+        client.publish("work_temp", (char*) payload.c_str());
+
   }
 }
