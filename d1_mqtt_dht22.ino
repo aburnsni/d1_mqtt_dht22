@@ -14,7 +14,7 @@ DHTesp dht;
 
 // Variables
 unsigned long previousMillis = 0;
-const long interval = 5000;
+const long interval = 60000;
 
 const char* mqtt_server = "m23.cloudmqtt.com";
 const int mqtt_port = 17822;
@@ -87,7 +87,7 @@ void reconnect() {
       // Once connected, publish an announcement...
       client.publish("connected", "hello world");
       // ... and resubscribe
-      client.subscribe("inTopic");
+      //      client.subscribe("inTopic");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -100,26 +100,26 @@ void reconnect() {
 
 void loop() {
 
-  if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+
 
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
-
+  if (!client.connected()) {
+    reconnect();
+  }
+  //  client.loop();
     // put your main code here, to run repeatedly:
     //delay(dht.getMinimumSamplingPeriod());
     float temperature = dht.getTemperature();
-    temperature = ((int)(temperature * 100))/100.0;
+    temperature = ((int)(temperature * 100)) / 100.0;
     Serial.print(dht.getStatusString());
     Serial.print("\t");
-    Serial.println(temperature);  
+    Serial.println(temperature);
 
-       dtostrf(temperature, 0, 1, temp2);
-String payload = temp2;
-        client.publish("work_temp", (char*) payload.c_str());
+    dtostrf(temperature, 0, 1, temp2);
+    String payload = temp2;
+    client.publish("work_temp", (char*) payload.c_str(), true);
 
   }
 }
