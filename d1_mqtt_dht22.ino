@@ -15,13 +15,20 @@ DHTesp dht;
 // Variables
 unsigned long previousMillis = 0;
 const long interval = 60000;
+//const long interval = 5000;
 
-const char* mqtt_server = "m23.cloudmqtt.com";
-const int mqtt_port = 17822;
-const char* mqtt_user = "hhwlirgn";
-const char* mqtt_pass = "FXwQWwN1fZhw";
+//const char* mqtt_server = "m23.cloudmqtt.com";
+//const int mqtt_port = 17822;
+//const char* mqtt_user = "hhwlirgn";
+//const char* mqtt_pass = "FXwQWwN1fZhw";
+
+const char* mqtt_server = "192.168.168.120";
+const int mqtt_port = 1883;
+const char* mqtt_user = "mosquitto";
+const char* mqtt_pass = "mosquittopass";
 
 char temp2[5];
+char humidity2[5];
 
 //  Initialise pubsubslient
 WiFiClient espClient;
@@ -112,14 +119,22 @@ void loop() {
     // put your main code here, to run repeatedly:
     //delay(dht.getMinimumSamplingPeriod());
     float temperature = dht.getTemperature();
+    float humidity = dht.getHumidity();
     temperature = ((int)(temperature * 100)) / 100.0;
+    humidity = ((int)(humidity * 100)) / 100.0;
     Serial.print(dht.getStatusString());
     Serial.print("\t");
-    Serial.println(temperature);
-
+    Serial.print(temperature);
+    Serial.print("\t");
+    Serial.println(humidity);
+    
     dtostrf(temperature, 0, 1, temp2);
     String payload = temp2;
-    client.publish("work_temp", (char*) payload.c_str(), true);
+    client.publish("work/temp", (char*) payload.c_str(), true);
+
+    dtostrf(humidity, 0, 1, humidity2);
+    payload = humidity2;
+    client.publish("work/humidity", (char*) payload.c_str(), true);
 
   }
 }
