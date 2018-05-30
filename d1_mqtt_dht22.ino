@@ -4,13 +4,14 @@
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 
+//needed for library
+#include <DNSServer.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
+
 // DHT Setup
 #include "DHTesp.h"
 DHTesp dht;
-
-// WiFi settings
-const char* ssid = "ffwifi";
-const char* password = "UpperMalon35";
 
 // Variables
 const int sleepTimeS = 10;
@@ -35,15 +36,19 @@ void setup() {
   // Serial
   Serial.begin(115200);
   Serial.println("ESP8266 in normal mode");
-  
+
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("AutoConnectAP");
+  Serial.println("connected...yeey :)");
+
   Serial.println("DHT setup");
   dht.setup(2); // data pin 2
   Serial.println("DHT setup complete");
   delay(5000);
   temperature = dht.getTemperature();
   humidity = dht.getHumidity();
-  temperature = ((int)(temperature * 100)) / 100.0;
-  humidity = ((int)(humidity * 100)) / 100.0;
+  // temperature = ((int)(temperature * 100)) / 100.0;
+  // humidity = ((int)(humidity * 100)) / 100.0;
   Serial.print(dht.getStatusString());
   Serial.print("\t");
   Serial.print(temperature);
@@ -53,47 +58,32 @@ void setup() {
 
 //READ DHT CHECK FOR CHANGE
   if (temperature != oldtemperature || humidity != oldhumidity) {
-    // Connect to WiFi
-    WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
+
+    //MQTT_connect();
+    int8_t ret;
+
+    // Stop if already connected.
+    if (mqtt.connected()) {
+      return;
     }
-    Serial.println("");
-    Serial.println("WiFi connected");
-    
-    // Print the IP address
-    Serial.println(WiFi.localIP());
 
-    // Logging data to cloud
-    Serial.print("Connecting to ");
-    Serial.println(AIO_SERVER);
+    Serial.print("Connecting to MQTT... ");
 
-//MQTT_connect();
-int8_t ret;
+    uint8_t retries = 3;
+    while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+          Serial.println(mqtt.connectErrorString(ret));
+          Serial.println("Retrying MQTT connection in 5 seconds...");
+          mqtt.disconnect();
+          delay(5000);  // wait 5 seconds
+          retries--;
+          if (retries == 0) {
+            // basically die and wait for WDT to reset me
+            while (1);
+          }
+    }
+    Serial.println("MQTT Connected!");
 
-// Stop if already connected.
-if (mqtt.connected()) {
-  return;
-}
-
-Serial.print("Connecting to MQTT... ");
-
-uint8_t retries = 3;
-while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-      Serial.println(mqtt.connectErrorString(ret));
-      Serial.println("Retrying MQTT connection in 5 seconds...");
-      mqtt.disconnect();
-      delay(5000);  // wait 5 seconds
-      retries--;
-      if (retries == 0) {
-        // basically die and wait for WDT to reset me
-        while (1);
-      }
-}
-Serial.println("MQTT Connected!");
-
-//Publish readings
+    //Publish readings
     if (! worktemp.publish(temperature)) {
       Serial.println(F("Failed"));
     } else {
