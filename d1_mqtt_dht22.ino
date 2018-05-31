@@ -1,5 +1,7 @@
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
 
+#include <EEPROM.h>
+
 //needed for library
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
@@ -17,6 +19,14 @@ DHTesp dht;
 unsigned long previousMillis = 0;
 //const long interval = 60000;
 const long interval = 5000;
+
+const int TEMP_ADDR = 0;
+const int HUM_ADDR = 4;
+
+float temperature;
+float oldtemperature;
+float humidity;
+float oldhumidity;
 
 //const char* mqtt_server = "m23.cloudmqtt.com";
 //const int mqtt_port = 17822;
@@ -47,6 +57,7 @@ void MQTT_connect();
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  EEPROM.begin(512); // Needed for ESP8266
 
   //WiFiManager
   //Local intialization. Once its business is done, there is no need to keep it around
@@ -71,6 +82,8 @@ void setup() {
 
   dht.setup(2); // data pin 2
 
+  oldtemperature = readFloat(TEMP_ADDR);
+  oldhumidity = readFloat(HUM_ADDR);
 }
 
 // void reconnect() {
@@ -95,7 +108,12 @@ void setup() {
 // }
 
 void loop() {
-MQTT_connect();
+
+  // Serial.println ("Old Values");
+  // Serial.print(readFloat(TEMP_ADDR));
+  // Serial.print("\t");
+  // Serial.println(readFloat(HUM_ADDR));
+  MQTT_connect();
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
@@ -105,36 +123,53 @@ MQTT_connect();
   //  client.loop();
     // put your main code here, to run repeatedly:
     //delay(dht.getMinimumSamplingPeriod());
-    float temperature = dht.getTemperature();
-    float humidity = dht.getHumidity();
-    temperature = ((int)(temperature * 100)) / 100.0;
-    humidity = ((int)(humidity * 100)) / 100.0;
-    Serial.print(dht.getStatusString());
-    Serial.print("\t");
-    Serial.print(temperature);
-    Serial.print("\t");
-    Serial.println(humidity);
-    
-  if (! worktemp.publish(temperature)) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
-  if (! workhumidity.publish(humidity)) {
-    Serial.println(F("Failed"));
-  } else {
-    Serial.println(F("OK!"));
-  }
+    temperature = dht.getTemperature();
+    humidity = dht.getHumidity();
 
-    // dtostrf(temperature, 0, 1, temp2);
-    // String payload = temp2;
+    if (temperature != oldtemperature || humidity != oldhumidity) {
+      // temperature = ((int)(temperature * 100)) / 100.0;
+      // humidity = ((int)(humidity * 100)) / 100.0;
+      Serial.print(dht.getStatusString());
+      Serial.print("\t");
+      Serial.print(temperature);
+      Serial.print("\t");
+      Serial.println(humidity);
+      
+      if (! worktemp.publish(temperature)) {
+        Serial.println(F("Failed"));
+      } else {
+        Serial.println(F("OK!"));
+      }
+      if (! workhumidity.publish(humidity)) {
+        Serial.println(F("Failed"));
+      } else {
+        Serial.println(F("OK!"));
+      }
 
-    // client.publish("work/temp", (char*) payload.c_str(), true);
+      // dtostrf(temperature, 0, 1, temp2);
+      // String payload = temp2;
 
-    // dtostrf(humidity, 0, 1, humidity2);
-    // payload = humidity2;
-    // client.publish("work/humidity", (char*) payload.c_str(), true);
+      // client.publish("work/temp", (char*) payload.c_str(), true);
 
+      // dtostrf(humidity, 0, 1, humidity2);
+      // payload = humidity2;
+      // client.publish("work/humidity", (char*) payload.c_str(), true);
+
+      if (temperature != oldtemperature) {
+        writeFloat(TEMP_ADDR,temperature);
+        Serial.println("Writing temp to EEPROM");
+        oldtemperature = temperature;
+        Serial.print("Old temp is now: ");
+        Serial.println(oldtemperature);
+      }
+      if (humidity != oldhumidity) {
+        writeFloat(HUM_ADDR,humidity);
+        Serial.println("Writing humidity to EEPROM");
+        oldhumidity = humidity;
+        Serial.print("Old humidity is now: ");
+        Serial.println(oldtemperature);
+      }
+    }
   }
 }
 
@@ -161,4 +196,32 @@ void MQTT_connect() {
        }
   }
   Serial.println("MQTT Connected!");
+}
+
+float readFloat(unsigned int addr)
+{
+  union
+  {
+    byte b[4];
+    float f;
+  } data;
+  for(int i = 0; i < 4; i++)
+  {
+   data.b[i] = EEPROM.read(addr+i);
+  }
+  return data.f;
+}
+void writeFloat(unsigned int addr, float x)
+{
+  union
+  {
+    byte b[4];
+    float f;
+  } data;
+  data.f = x;
+  for(int i = 0; i < 4; i++)
+  {
+    EEPROM.write(addr+i, data.b[i]);
+  }
+  EEPROM.commit();  //  Needed for ESP8266
 }
